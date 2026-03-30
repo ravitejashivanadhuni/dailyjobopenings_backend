@@ -1,17 +1,26 @@
 const Job = require("../models/job");
 const slugify = require("slugify");
-
+const JobAlert = require("../models/jobalert");
+const sendEmail = require("../utils/sendemail");
 
 // CREATE JOB
 const createJob = async (req, res) => {
   try {
+    const {
+      companyName,
+      jobTitle,
+      location,
+      jobRole,
+      experienceLevel,
+      eligibleBatches,
+      jobCategory,
+      workMode
+    } = req.body;
 
-    const { companyName, jobTitle, location, jobRole, experienceLevel, eligibleBatches } = req.body;
-
-    const slug = slugify(`${companyName}-${jobTitle}-${location}-${jobRole}-${experienceLevel}-${eligibleBatches}`, {
-      lower: true,
-      strict: true
-    });
+    const slug = slugify(
+      `${companyName}-${jobTitle}-${location}-${jobRole}-${experienceLevel}-${eligibleBatches}`,
+      { lower: true, strict: true }
+    );
 
     const job = new Job({
       ...req.body,
@@ -20,6 +29,9 @@ const createJob = async (req, res) => {
 
     const savedJob = await job.save();
 
+    // 🔥 TRIGGER ALERT SYSTEM
+    await sendJobAlerts(savedJob);
+
     res.status(201).json({
       success: true,
       message: "Job created successfully",
@@ -27,13 +39,11 @@ const createJob = async (req, res) => {
     });
 
   } catch (error) {
-
     res.status(500).json({
       success: false,
       message: "Error creating job",
       error: error.message
     });
-
   }
 };
 
@@ -494,6 +504,77 @@ const getJobsByLocation = async (req, res) => {
   }
 };
 
+const sendJobAlerts = async (job) => {
+  try {
+    const alerts = await JobAlert.find();
+
+    const matchedUsers = alerts.filter(alert => {
+      let score = 0;
+
+      if (alert.jobCategory?.includes(job.jobCategory)) score++;
+      if (alert.jobRole?.includes(job.jobRole)) score++;
+      if (alert.location?.includes(job.location)) score++;
+      if (alert.workMode?.includes(job.workMode)) score++;
+      if (alert.eligibleBatches?.includes(job.eligibleBatches)) score++;
+
+      return score >= 2; // 🔥 minimum 2 matches (tune this)
+    });
+
+    // 📩 Send emails
+    for (const user of matchedUsers) {
+      await sendEmail(
+        user.email,
+        `🔥 New Job Alert: ${job.jobTitle}`,
+        `
+        <h2>${job.jobTitle}</h2>
+        <p><b>Company:</b> ${job.companyName}</p>
+        <p><b>Location:</b> ${job.location}</p>
+        <p><b>Experience:</b> ${job.experienceLevel}</p>
+        <p><b>Type:</b> ${job.jobType}</p>
+
+        <a href="${job.jobLink}" style="color:blue;">
+          Apply Now
+        </a>
+
+        <p style="margin-top:10px;">Good luck 🚀</p>
+        `
+      );
+    }
+
+  } catch (err) {
+    console.error("Error sending job alerts:", err);
+  }
+};
+
+const subscribeJobAlert = async (req, res) => {
+  try {
+    const data = req.body;
+
+    let existing = await JobAlert.findOne({ email: data.email });
+
+    if (existing) {
+      await JobAlert.updateOne({ email: data.email }, data);
+    } else {
+      await JobAlert.create(data);
+    }
+
+    // 📩 Confirmation email
+    await sendEmail(
+      data.email,
+      "✅ Job Alert Activated",
+      `
+      <h2>You're all set! 🎯</h2>
+      <p>Your job alerts are now active on <b>Daily Job Openings</b>.</p>
+      `
+    );
+
+    res.json({ message: "Subscribed successfully" });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   createJob,
   getJobs,
@@ -505,6 +586,8 @@ module.exports = {
   getStats,
   getJobCategories,
   getTopCompanies,
-  getJobsByLocation
+  getJobsByLocation,
+  sendJobAlerts,
+  subscribeJobAlert
 
 };
