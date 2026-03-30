@@ -37,4 +37,5 @@ router.get("/top-hiring-companies", getTopCompanies);
 router.get("/jobs-by-location", getJobsByLocation);
 
 
+
 module.exports = router;
