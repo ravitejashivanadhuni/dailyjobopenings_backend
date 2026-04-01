@@ -2,9 +2,9 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const serverless = require("serverless-http");
-const connectDB = require("./config/db");
-const jobRoutes = require("./routes/jobRoutes");
-const jobAlertRoutes = require("./routes/jobalertroutes");
+const connectDB = require("../config/db");
+const jobRoutes = require("../routes/jobRoutes");
+const jobAlertRoutes = require("../routes/jobalertroutes");
 
 
 // require("./cron/jobstatusupdater"); //this is related to cron job status updater which will automatically update the status of jobs to "expired" when their expiry date has passed. It runs a scheduled task every day at midnight to check for expired jobs and update their status accordingly.
