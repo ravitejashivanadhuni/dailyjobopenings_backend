@@ -15,7 +15,7 @@ const app = express();
 //cors
 app.use(
   cors({
-    origin:  "*",
+    origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   })
@@ -24,7 +24,7 @@ app.use(
 app.use(express.json());
 
 // Database connection
-connectDB();
+// connectDB();
 
 app.use("/api", jobRoutes);
 app.use("/api/job-alerts", jobAlertRoutes);
